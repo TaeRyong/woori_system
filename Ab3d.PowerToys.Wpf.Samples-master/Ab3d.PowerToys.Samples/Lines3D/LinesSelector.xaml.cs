@@ -66,10 +66,6 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             minC = new Color4(0, 0, 1, 1);
             maxC = new Color4(1, 0, 0, 1);
             _lineSelectorData = new List<LineSelectorData>();
-            //var randomColor = Color.FromArgb(255, 0, 0, 0);
-            //var lineVisual3D = GenerateRandomLine(randomColor, 10);
-            //var lineSelectorData = new LineSelectorData(lineVisual3D, Camera1, adjustLineDistanceWithLineThickness: true);
-            
             CrateColoredPolyLine(20000);
 
             var lineSelectorData = new LineSelectorData(points, true);
@@ -102,7 +98,6 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             };
 
             startStatusBarTimer();
-            //Camera1.StartRotation(rotateSpeed, 0);
         }
 
         private void startStatusBarTimer()
@@ -278,13 +273,10 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             {
                 if (_lastSelectedLineSelector != null)
                 {
-                    //_lastSelectedLineSelector.LineVisual3D.LineColor = _savedLineColor;
                 }
 
                 if (closestLineSelector != null)
                 {
-                    //_savedLineColor = closestLineSelector.LineVisual3D.LineColor;
-                    //closestLineSelector.LineVisual3D.LineColor = Colors.Red;
                 }
 
                 _lastSelectedLineSelector = closestLineSelector;
@@ -314,18 +306,6 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             {
                 float max = 1;
                 Vector3 v = Vector3.Left;
-                //if (_rnd.Next(0, 100) <50 )
-                //{
-                //    float left = -1;
-                //    if (_rnd.Next(0, 1) == 0)
-                //    {
-                //        left = 1;
-                //    }
-
-                //    v = preV + new Vector3(_rnd.NextFloat(max * -1f, max), left * max * -1f, 0);
-                //}
-                //else
-                //    v = preV + preV;
                 v = preV + new Vector3(_rnd.NextFloat(max * -1f, max), 0, _rnd.NextFloat(max * -1f, max));
                 preC = GetColor(i, preC);
                 colors.Add(preC);
