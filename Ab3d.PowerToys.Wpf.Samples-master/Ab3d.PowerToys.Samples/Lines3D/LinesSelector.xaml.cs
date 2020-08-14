@@ -20,6 +20,7 @@ using Ab3d.Common.Cameras;
 using Ab3d.Common.Models;
 using Ab3d.Utilities;
 using Ab3d.Visuals;
+using Ab3d.DirectX.Controls;
 using Ab3d.DirectX.Materials;
 using Color = System.Windows.Media.Color;
 using Point = System.Windows.Point;
@@ -34,44 +35,90 @@ namespace Ab3d.PowerToys.Samples.Lines3D
     /// <summary>
     /// Interaction logic for LinesSelector.xaml
     /// </summary>
+    /// 
+    public static class WColor
+    {
+        static Random rnd = new Random();
+        static Color4 _min, _max, _def;
+        static public void SetColor(Color4 min, Color4 max, Color4 def)
+        {
+            _min = min;
+            _max = max;
+            _def = def;
+        }
+        public static Color4 GetColor(int index, Color4 preC)
+        {
+            int _r = rnd.Next(0, 100);
+            if (index % 2 == 0)
+            {
+                if (_r < 33)
+                    return _max;
+                else if (_r < 66)
+                    return _min;
+                else
+                    return _def;
+            }
+            return preC;
+        }
+    }
     public partial class LinesSelector : Page
     {
         private Random _rnd = new Random();
-
-        private float _linePositionsRange = 10;
         private List<LineSelectorData> _lineSelectorData;
-
         private LineSelectorData _lastSelectedLineSelector;
-        private Color _savedLineColor;
-
         private bool _isCameraChanged;
-
         private Ab3d.Visuals.SphereVisual3D _closestPositionSphereVisual3D;
         private Point _lastMousePosition;
-
         private double _maxSelectionDistance;
-        private Color4[] _positionColorsArray;
+        List<LinesSelector.WLineRenderData> lrData = new List<LinesSelector.WLineRenderData>();
+        public class WLineRenderData
+        {
+            public LineSelectorData selectData;
+            public ScreenSpaceLineNode node;
+            PositionColoredLineMaterial material;
+            public List<SharpDX.Color4> colors = new List<Color4>();
+            public WLineRenderData(ScreenSpaceLineNode _node, LineSelectorData _selectData,
+                PositionColoredLineMaterial mtl, List<SharpDX.Color4> _colors)
+            {
+                node = _node;
+                selectData = _selectData;
+                material = mtl;
+                colors = _colors;
+            }
+            public void Update(DXViewportView MainDXViewportView)
+            {
+                Color4 preC = Color4.White;
+                for (int i = 0; i < colors.Count; i++)
+                {
+                    Color4 c = colors[i];
+                    colors[i] = WColor.GetColor(i, preC);
+                    preC = colors[i];
+                }
 
-        List<Point3D> points = new List<Point3D>();
-        List<SharpDX.Vector3> vectors = new List<Vector3>();
-        List<SharpDX.Color4> colors = new List<SharpDX.Color4>();
-        ScreenSpaceLineNode screenSpaceLineNode;
-        PositionColoredLineMaterial lineMaterial;
-        Color4 defC, minC, maxC;
+                if (material == null)
+                    return;
+
+                material.PositionColors = colors.ToArray();
+                material.Update();
+
+                var sceneNode = MainDXViewportView.GetSceneNodeForWpfObject(node.GetGeometryModel3D());
+                if (sceneNode != null)
+                    sceneNode.NotifySceneNodeChange(SceneNode.SceneNodeDirtyFlags.MaterialChanged);
+            }
+        }
         public LinesSelector()
         {
             InitializeComponent();
-            Camera1.NearPlaneDistance = 0.1f;
-            defC = new Color4(1, 1, 0, 1);
-            minC = new Color4(0, 0, 1, 1);
-            maxC = new Color4(1, 0, 0, 1);
-            _lineSelectorData = new List<LineSelectorData>();
-            CrateColoredPolyLine(20000);
+            WColor.SetColor(new Color4(0, 0, 1, 1),
+                new Color4(1, 0, 0, 1), new Color4(1, 1, 0, 1));
 
-            var lineSelectorData = new LineSelectorData(points, true);
-            bool isVisualConnected; // This will be set to true if lineVisual3D is connected to Viewport3D (always true in our case).
-            //lineSelectorData.PositionsTransform3D = Ab3d.Utilities.TransformationsHelper.GetVisual3DTotalTransform(lineVisual3D, true, out isVisualConnected);
-            _lineSelectorData.Add(lineSelectorData);
+            _lineSelectorData = new List<LineSelectorData>();
+
+            for(int i = 0; i< 10; i++)
+            {
+                CreateColoredPolyLine(20000, i);
+            }
+
             _isCameraChanged = true; // When true, the CalculateScreenSpacePositions method is called before calculating line distances
             Camera1.CameraChanged += delegate(object sender, CameraChangedRoutedEventArgs e)
             {
@@ -88,11 +135,11 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             // Cleanup
             this.Unloaded += delegate (object sender, RoutedEventArgs args)
             {
-                if (lineMaterial != null)
-                {
-                    lineMaterial.Dispose();
-                    lineMaterial = null;
-                }
+                //if (lineMaterial != null)
+                //{
+                //    lineMaterial.Dispose();
+                //    lineMaterial = null;
+                //}
 
                 MainDXViewportView.Dispose();
             };
@@ -103,11 +150,8 @@ namespace Ab3d.PowerToys.Samples.Lines3D
         private void startStatusBarTimer()
         {
             System.Timers.Timer statusTime = new System.Timers.Timer();
-
             statusTime.Interval = 100;
-
             statusTime.Elapsed += new System.Timers.ElapsedEventHandler(statusTimeElapsed);
-
             statusTime.Enabled = true;
         }
 
@@ -118,24 +162,10 @@ namespace Ab3d.PowerToys.Samples.Lines3D
 
             App.Current.Dispatcher.Invoke((Action)delegate
             {
-                Console.WriteLine("check");
-                Color4 preC = Color4.White;
-                for (int i = 0; i < colors.Count; i++)
+                foreach(var v in lrData)
                 {
-                    Color4 c = colors[i];
-                    colors[i] = GetColor(i, preC);
-                    preC = colors[i];
+                    v.Update(MainDXViewportView);
                 }
-
-                if (lineMaterial == null)
-                    return;
-
-                lineMaterial.PositionColors = colors.ToArray();
-                lineMaterial.Update();
-
-                var sceneNode = MainDXViewportView.GetSceneNodeForWpfObject(screenSpaceLineNode.GetGeometryModel3D());
-                if (sceneNode != null)
-                    sceneNode.NotifySceneNodeChange(SceneNode.SceneNodeDirtyFlags.MaterialChanged);
             });
         }
 
@@ -245,7 +275,7 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             {
                 _closestPositionSphereVisual3D = new SphereVisual3D()
                 {
-                    Radius = 0.1f,
+                    Radius = 1f,
                     Material = new DiffuseMaterial(Brushes.Red)
                 };
 
@@ -273,41 +303,37 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             {
                 if (_lastSelectedLineSelector != null)
                 {
+                    
                 }
 
                 if (closestLineSelector != null)
                 {
+                    for(int i = 0; i < lrData.Count; i++)
+                    {
+                        
+                    }
                 }
 
                 _lastSelectedLineSelector = closestLineSelector;
             }
         }
 
-        Color4 GetColor(int index, Color4 preC)
-        {
-            int _r = _rnd.Next(0, 100);
-            if (index % 2 == 0)
-            {
-                if (_r < 5)
-                    return maxC;
-                else if (_r < 10)
-                    return minC;
-                else
-                    return defC;
-            }
-            return preC;
-        }
+        
 
-        void CrateColoredPolyLine(int count)
+        void CreateColoredPolyLine(int count, int layer)
         {
-            Vector3 preV = Vector3.Zero;
+            Vector3 preV = new Vector3(0, layer, 0);
             Color4 preC = Color4.White;
+            var points = new List<Point3D>();
+            var vectors = new List<Vector3>();
+            var colors = new List<SharpDX.Color4>();
+
             for(int i = 0; i < count; i++)
             {
-                float max = 1;
-                Vector3 v = Vector3.Left;
-                v = preV + new Vector3(_rnd.NextFloat(max * -1f, max), 0, _rnd.NextFloat(max * -1f, max));
-                preC = GetColor(i, preC);
+                float max = 1f;
+                Vector3 v = new Vector3(1, layer, 0);
+                v.X += preV.X;
+                //Console.WriteLine("{0} : {1} {2} {3}", i, v.X, v.Y, v.Z);
                 colors.Add(preC);
                 points.Add(new Point3D((double)v.X, (double)v.Y, (double)v.Z));
                 vectors.Add(v);
@@ -315,9 +341,9 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             }
 
             DisposeList disposables = new DisposeList();
-            float lineThickness = 10;
-            bool isPolyLine = true;
-            lineMaterial = new PositionColoredLineMaterial()
+            float lineThickness = 5;
+            bool isPolyLine = false;
+            var lineMaterial = new PositionColoredLineMaterial()
             {
                 LineColor = Color4.White, // When PositionColors are used, then LineColor is used as a mask - each color is multiplied by LineColor - use White to preserve PositionColors
                 LineThickness = lineThickness,
@@ -326,7 +352,7 @@ namespace Ab3d.PowerToys.Samples.Lines3D
             };
 
             // NOTE: When rendering multi-lines we need to set isLineStrip to false
-            screenSpaceLineNode = new ScreenSpaceLineNode(vectors.ToArray(), isLineClosed: false, isLineStrip: isPolyLine, lineMaterial: lineMaterial);
+            var screenSpaceLineNode = new ScreenSpaceLineNode(vectors.ToArray(), isLineClosed: false, isLineStrip: true, lineMaterial: lineMaterial);
 
             if (disposables != null)
             {
@@ -336,7 +362,12 @@ namespace Ab3d.PowerToys.Samples.Lines3D
 
             var sceneNodeVisual = new SceneNodeVisual3D(screenSpaceLineNode);
             MainViewport.Children.Add(sceneNodeVisual);
-            Camera1.RotateTo(90, -90);
+            bool isVisualConnected;
+            var lineSelectorData = new LineSelectorData(points, true);
+            lineSelectorData.PositionsTransform3D = Ab3d.Utilities.TransformationsHelper.GetVisual3DTotalTransform(sceneNodeVisual, true, out isVisualConnected);
+            _lineSelectorData.Add(lineSelectorData);
+            var _data = new WLineRenderData(screenSpaceLineNode, lineSelectorData, lineMaterial, colors);
+            lrData.Add(_data);
         }
 
         private void UpdateMaxDistanceText()

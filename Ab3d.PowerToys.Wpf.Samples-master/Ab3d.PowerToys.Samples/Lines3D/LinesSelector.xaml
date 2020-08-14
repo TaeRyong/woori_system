@@ -13,7 +13,7 @@
              MinWidth="600">
     <Grid>
         <Border Name="MainBorder" Background="White">
-            <dxControls:DXViewportView Name="MainDXViewportView" PresentationType="DirectXImage" BackgroundColor="Black">
+            <dxControls:DXViewportView Name="MainDXViewportView" PresentationType="DirectXImage" BackgroundColor="Wheat">
             <Viewport3D Name="MainViewport" >
                 <ModelVisual3D x:Name="RootVisual3D">
                     <ModelVisual3D.Transform>
@@ -27,9 +27,11 @@
 
         <cameras:TargetPositionCamera Name="Camera1" 
                                       TargetPosition="0 0 0"
-                                      RotationCenterPosition="0 0 0"
-                                      Distance="1000" 
-                                      ShowCameraLight="Always"/>
+                                      Distance="10000"
+                                      NearPlaneDistance="0.1"
+                                      FarPlaneDistance="100000"
+                                      ShowCameraLight="Always"
+                                      TargetViewport3D="{Binding ElementName=MainViewport}" />
 
         <ab3d:MouseCameraController Name="MouseCameraController1" 
                                     RotateCameraConditions="RightMouseButtonPressed"
@@ -71,7 +73,5 @@
                 </StackPanel>
             </Border>
         </StackPanel>
-
-        <TextBlock Text="3D line selection when mouse is close to the line" FontWeight="Bold" FontSize="20" Foreground="#555" HorizontalAlignment="Left" VerticalAlignment="Top"/>
     </Grid>
 </Page>

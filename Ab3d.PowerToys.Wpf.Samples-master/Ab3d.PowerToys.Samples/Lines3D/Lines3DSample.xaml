@@ -96,6 +96,7 @@
                                       TargetPosition="0 0 0"
                                       Heading="30" Attitude="-20" Bank="0" 
                                       Distance="700"
+
                                       ShowCameraLight="Always"
                                       TargetViewport3D="{Binding ElementName=MainViewport}" />
 
